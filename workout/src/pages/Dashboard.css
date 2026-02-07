@@ -1,0 +1,217 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #0f172a;
+    color: white;
+    font-family: system-ui, sans-serif;
+}
+
+.dashboard-root {
+    max-width: 420px;
+    margin: auto;
+    padding-bottom: 90px;
+}
+
+/* TOP BAR */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    padding: 16px;
+    backdrop-filter: blur(10px);
+}
+
+.profile {
+    display: flex;
+    gap: 12px;
+}
+
+.avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #256af4;
+}
+
+.greeting {
+    font-size: 12px;
+    opacity: 0.6;
+}
+
+.top-actions button {
+    background: #1e293b;
+    border: none;
+    color: white;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    margin-left: 6px;
+}
+
+/* STATS */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 16px;
+}
+
+.stat-card {
+    background: rgba(30, 41, 59, 0.6);
+    border-radius: 14px;
+    padding: 14px;
+}
+
+.stat-card p {
+    font-size: 11px;
+    opacity: 0.6;
+    text-transform: uppercase;
+}
+
+.stat-card h3 {
+    margin: 0;
+}
+
+.change {
+    color: #22c55e;
+    font-size: 11px;
+    float: right;
+}
+
+/* ANALYTICS */
+.analytics {
+    padding: 16px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+}
+
+.section-header button {
+    background: none;
+    border: none;
+    color: #256af4;
+}
+
+.chart-card {
+    background: rgba(30, 41, 59, 0.4);
+    border-radius: 18px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.label {
+    opacity: 0.6;
+}
+
+.badge {
+    font-size: 11px;
+}
+
+.positive { color: #22c55e; }
+.negative { color: #f87171; }
+
+/* FAKE CHART */
+.fake-chart {
+    height: 100px;
+    background: linear-gradient(to top, rgba(37,106,244,0.3), transparent);
+    border-radius: 12px;
+    margin: 16px 0;
+}
+
+.days, .weeks {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    opacity: 0.5;
+}
+
+/* BAR CHART */
+.bar-chart {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    height: 120px;
+    align-items: end;
+}
+
+.bar-chart div {
+    background: rgba(37,106,244,0.4);
+    border-radius: 6px;
+}
+
+.bar-chart .active {
+    background: #256af4;
+}
+
+/* WORKOUTS */
+.recent {
+    padding: 16px;
+}
+
+.workout-card {
+    display: flex;
+    align-items: center;
+    background: rgba(30,41,59,0.5);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 10px;
+}
+
+.workout-icon {
+    font-size: 22px;
+    margin-right: 12px;
+}
+
+.workout-info p {
+    font-size: 12px;
+    opacity: 0.6;
+}
+
+.intensity {
+    margin-left: auto;
+    text-align: right;
+}
+
+.intensity span {
+    font-size: 10px;
+    opacity: 0.6;
+}
+
+/* BOTTOM NAV */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 420px;
+    margin: auto;
+    background: #020617;
+    display: flex;
+    justify-content: space-around;
+    padding: 12px;
+}
+
+.bottom-nav button {
+    background: none;
+    border: none;
+    color: #64748b;
+    font-size: 20px;
+}
+
+.bottom-nav .active {
+    color: #256af4;
+}
+
+.bottom-nav .add {
+    background: #256af4;
+    color: white;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    font-size: 26px;
+    margin-top: -30px;
+}
