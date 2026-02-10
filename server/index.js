@@ -42,22 +42,6 @@ const AthleteProfile = mongoose.model("AthleteProfile", {
     weightKg: Number,
     bmi: Number,
     trainingDaysPerWeek: Number,
-    // 🆕 NEW: World Athletics fields
-    worldAthleticsCode: {
-        type: String,
-        default: null
-    },
-    worldAthleticsData: {
-        personalBests: [{
-            event: String,
-            performance: String,
-            venue: String,
-            date: String
-        }],
-        nationality: String,
-        dateOfBirth: String,
-        club: String
-    },
     createdAt: { type: Date, default: Date.now },
 });
 
@@ -173,9 +157,29 @@ app.post("/api/workouts", auth, async (req, res) => {
     }
 });
 
-// 🆕 World Athletics route
-const worldAthleticsRoutes = require('./routes/worldAthletics');
-app.use('/api/profile', worldAthleticsRoutes);
+// 🆕 NEW: GET workouts route (sorted by creation time, newest first)
+app.get("/api/workouts", auth, async (req, res) => {
+    try {
+        const workouts = await Workout.find({ userId: req.userId })
+            .sort({ createdAt: -1 }) // Sort by creation time, newest first
+            .limit(100);
+
+        res.json({
+            success: true,
+            workouts
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch workouts"
+        });
+    }
+});
+
+// 🆕 NEW: Competitions route
+const competitionRoutes = require('./routes/competitions');
+app.use('/api/competitions', competitionRoutes);
 
 app.listen(PORT, () =>
     console.log(`Server running on http://localhost:${PORT}`)

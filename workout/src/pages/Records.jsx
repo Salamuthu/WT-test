@@ -1,77 +1,270 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const Records = () => {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState("all");
+    const [loading, setLoading] = useState(true);
 
-    // Sample data - replace with API call later
-    const featuredPRs = [
-        {
-            id: 1,
-            icon: "speed",
-            name: "100m Sprint",
-            value: "10.42",
-            unit: "s",
-            improvement: "-0.15s",
-            status: "Active",
-            statusColor: "green",
-            trending: "trending_down"
-        },
-        {
-            id: 2,
-            icon: "fitness_center",
-            name: "Back Squat",
-            value: "185",
-            unit: "kg",
-            improvement: "+5.0kg",
-            status: "Elite",
-            statusColor: "primary",
-            trending: "trending_up"
-        }
-    ];
+    // Data states
+    const [profile, setProfile] = useState(null);
+    const [competitions, setCompetitions] = useState([]);
+    const [workouts, setWorkouts] = useState([]);
+    const [featuredPRs, setFeaturedPRs] = useState([]);
+    const [allRecords, setAllRecords] = useState([]);
+    const [monthlyProgress, setMonthlyProgress] = useState(0);
 
-    const allRecords = [
-        {
-            id: 1,
-            icon: "timer",
-            name: "200m Sprint",
-            date: "Aug 14, 2023",
-            value: "21.85s",
-            change: "-0.08s",
-            changeType: "positive"
-        },
-        {
-            id: 2,
-            icon: "exercise",
-            name: "Deadlift",
-            date: "Aug 10, 2023",
-            value: "210kg",
-            change: "+10kg",
-            changeType: "positive"
-        },
-        {
-            id: 3,
-            icon: "directions_run",
-            name: "400m Sprint",
-            date: "Jul 28, 2023",
-            value: "48.12s",
-            change: "Stable",
-            changeType: "neutral"
-        },
-        {
-            id: 4,
-            icon: "physical_therapy",
-            name: "Bench Press",
-            date: "Jul 15, 2023",
-            value: "140kg",
-            change: "+2.5kg",
-            changeType: "positive"
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    useEffect(() => {
+        if (profile && competitions.length > 0 && workouts.length > 0) {
+            processFeaturedPRs();
+            processAllRecords();
         }
-    ];
+    }, [activeTab, profile, competitions, workouts]);
+
+    const fetchData = async () => {
+        const token = localStorage.getItem("token");
+        if (!token) {
+            navigate("/login");
+            return;
+        }
+
+        try {
+            // Fetch profile
+            const profileRes = await axios.get("http://localhost:3000/api/profile/me", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setProfile(profileRes.data);
+
+            // Fetch competitions
+            const compRes = await axios.get("http://localhost:3000/api/competitions", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setCompetitions(compRes.data.competitions || []);
+
+            // Fetch workouts
+            const workoutRes = await axios.get("http://localhost:3000/api/workouts", {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            setWorkouts(workoutRes.data.workouts || []);
+
+            // Calculate monthly progress
+            calculateMonthlyProgress(compRes.data.competitions || [], workoutRes.data.workouts || []);
+
+            setLoading(false);
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            setLoading(false);
+        }
+    };
+
+    const calculateMonthlyProgress = (comps, works) => {
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
+        const recentComps = comps.filter(c => new Date(c.date) >= oneMonthAgo);
+        const recentWorkouts = works.filter(w => new Date(w.date) >= oneMonthAgo);
+
+        setMonthlyProgress(recentComps.length + recentWorkouts.length);
+    };
+
+    const timeToSeconds = (timeStr) => {
+        const [mm, ss, ms] = timeStr.split(':').map(Number);
+        return mm * 60 + ss + ms / 100;
+    };
+
+    const formatTime = (timeStr) => {
+        const [mm, ss, ms] = timeStr.split(':');
+        if (mm === "00") {
+            return `${ss}.${ms}s`;
+        }
+        return `${parseInt(mm)}:${ss}.${ms}`;
+    };
+
+    const processFeaturedPRs = () => {
+        const prs = [];
+
+        // Running PR (Main Event)
+        if (profile?.mainEvent) {
+            const mainEventComps = competitions.filter(c => c.distance === profile.mainEvent);
+            if (mainEventComps.length > 0) {
+                const sorted = [...mainEventComps].sort((a, b) =>
+                    timeToSeconds(a.raceTime) - timeToSeconds(b.raceTime)
+                );
+                const best = sorted[0];
+
+                // Calculate improvement
+                let improvement = "—";
+                if (sorted.length > 1) {
+                    const diff = timeToSeconds(sorted[1].raceTime) - timeToSeconds(best.raceTime);
+                    improvement = `-${diff.toFixed(2)}s`;
+                }
+
+                prs.push({
+                    id: 'main-event',
+                    icon: "speed",
+                    name: profile.mainEvent,
+                    value: formatTime(best.raceTime).replace('s', ''),
+                    unit: "s",
+                    improvement: improvement,
+                    status: "Active",
+                    statusColor: "green",
+                    trending: "trending_down"
+                });
+            }
+        }
+
+        // Strength PR (Heaviest lift)
+        const strengthWorkouts = workouts.filter(w => w.workoutType === "Strength" && w.exercises?.length > 0);
+        if (strengthWorkouts.length > 0) {
+            let heaviestExercise = null;
+            let maxWeight = 0;
+
+            strengthWorkouts.forEach(workout => {
+                workout.exercises.forEach(ex => {
+                    if (ex.weight > maxWeight) {
+                        maxWeight = ex.weight;
+                        heaviestExercise = {
+                            name: ex.exercise,
+                            weight: ex.weight,
+                            reps: ex.reps,
+                            date: workout.date
+                        };
+                    }
+                });
+            });
+
+            if (heaviestExercise) {
+                prs.push({
+                    id: 'strength-pr',
+                    icon: "fitness_center",
+                    name: heaviestExercise.name,
+                    value: heaviestExercise.weight,
+                    unit: "kg",
+                    improvement: `×${heaviestExercise.reps}`,
+                    status: "Elite",
+                    statusColor: "primary",
+                    trending: "trending_up"
+                });
+            }
+        }
+
+        setFeaturedPRs(prs);
+    };
+
+    const processAllRecords = () => {
+        let records = [];
+
+        // Competition records
+        const competitionRecords = competitions.map(comp => {
+            const eventType = getEventType(comp.distance);
+
+            return {
+                id: `comp-${comp._id}`,
+                type: 'competition',
+                eventType: eventType,
+                icon: eventType === 'sprints' ? 'timer' : 'directions_run',
+                name: comp.distance,
+                date: new Date(comp.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                value: formatTime(comp.raceTime),
+                change: comp.location,
+                changeType: "neutral",
+                rawDate: new Date(comp.date)
+            };
+        });
+
+        // Strength workout records (unique exercises with max weight)
+        const strengthWorkouts = workouts.filter(w => w.workoutType === "Strength" && w.exercises?.length > 0);
+        const exercisePRs = {};
+
+        strengthWorkouts.forEach(workout => {
+            workout.exercises.forEach(ex => {
+                if (ex.exercise && ex.weight) {
+                    if (!exercisePRs[ex.exercise] || ex.weight > exercisePRs[ex.exercise].weight) {
+                        exercisePRs[ex.exercise] = {
+                            exercise: ex.exercise,
+                            weight: ex.weight,
+                            reps: ex.reps,
+                            date: workout.date
+                        };
+                    }
+                }
+            });
+        });
+
+        const strengthRecords = Object.values(exercisePRs).map(pr => ({
+            id: `strength-${pr.exercise}`,
+            type: 'workout',
+            eventType: 'strength',
+            icon: 'exercise',
+            name: pr.exercise,
+            date: new Date(pr.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+            value: `${pr.weight}kg`,
+            change: `×${pr.reps} reps`,
+            changeType: "positive",
+            rawDate: new Date(pr.date)
+        }));
+
+        // Endurance records (total distance per workout)
+        const enduranceWorkouts = workouts.filter(w =>
+            (w.workoutType === "Endurance" || w.workoutType === "Sprint") &&
+            w.sets?.length > 0
+        );
+
+        const enduranceRecords = enduranceWorkouts.map(workout => {
+            const totalDistance = workout.sets.reduce((sum, set) => {
+                return sum + set.reps.reduce((rSum, rep) => {
+                    return rSum + (parseFloat(rep.distance) || 0);
+                }, 0);
+            }, 0);
+
+            return {
+                id: `endurance-${workout._id}`,
+                type: 'workout',
+                eventType: 'endurance',
+                icon: 'directions_run',
+                name: workout.workoutType,
+                date: new Date(workout.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                value: `${(totalDistance / 1000).toFixed(1)}km`,
+                change: `${workout.sets.length} sets`,
+                changeType: "neutral",
+                rawDate: new Date(workout.date)
+            };
+        });
+
+        // Combine and sort by date
+        records = [...competitionRecords, ...strengthRecords, ...enduranceRecords]
+            .sort((a, b) => b.rawDate - a.rawDate);
+
+        // Filter by active tab
+        if (activeTab !== "all") {
+            records = records.filter(r => r.eventType === activeTab);
+        }
+
+        setAllRecords(records);
+    };
+
+    const getEventType = (distance) => {
+        const dist = parseInt(distance);
+        if (dist <= 400) return 'sprints';
+        if (dist >= 3000) return 'endurance';
+        return 'sprints'; // Middle distance as sprints
+    };
+
+    if (loading) {
+        return (
+            <div className="bg-background-dark text-white min-h-screen flex items-center justify-center">
+                <p className="text-lg">Loading records...</p>
+            </div>
+        );
+    }
 
     return (
-        <div className="bg-background-dark text-white min-h-screen">
+        <div className="bg-background-dark text-white min-h-screen pb-24">
             {/* TOP APP BAR */}
             <header className="sticky top-0 z-50 bg-background-dark border-b border-slate-800/30">
                 <div className="flex items-center justify-between p-4">
@@ -82,7 +275,7 @@ const Records = () => {
                         <span className="material-symbols-outlined">arrow_back_ios</span>
                     </button>
                     <h2 className="text-lg font-bold flex-1 text-center">Personal Bests</h2>
-                    <button className="flex items-center justify-center">
+                    <button className="flex items-center justify-center opacity-0 pointer-events-none">
                         <span className="material-symbols-outlined">analytics</span>
                     </button>
                 </div>
@@ -96,7 +289,9 @@ const Records = () => {
                             <p className="text-xs font-medium uppercase tracking-wider text-primary">
                                 Monthly Progress
                             </p>
-                            <p className="text-2xl font-bold text-white">+4 New Records</p>
+                            <p className="text-2xl font-bold text-white">
+                                {monthlyProgress > 0 ? `+${monthlyProgress}` : monthlyProgress} New Records
+                            </p>
                         </div>
                         <div className="bg-primary rounded-full p-2">
                             <span className="material-symbols-outlined text-white">bolt</span>
@@ -126,88 +321,104 @@ const Records = () => {
                 </div>
 
                 {/* FEATURED PRS CAROUSEL */}
-                <h3 className="text-white text-lg font-bold px-4 pb-2 pt-4">Featured PRs</h3>
-                <div className="flex overflow-x-auto scrollbar-hide">
-                    <div className="flex items-stretch p-4 gap-4">
-                        {featuredPRs.map((pr) => (
-                            <div
-                                key={pr.id}
-                                className="flex h-full flex-1 flex-col gap-3 rounded-xl min-w-[280px] bg-[#1c2638] p-4 border border-slate-700/50 shadow-sm"
-                            >
-                                <div className="flex justify-between items-start">
-                                    <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-primary">
-                                            {pr.icon}
-                                        </span>
-                                    </div>
-                                    <span
-                                        className={`${
-                                            pr.statusColor === "green"
-                                                ? "bg-green-500/10 text-green-500 border-green-500/20"
-                                                : "bg-primary/10 text-primary border-primary/20"
-                                        } text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-widest border`}
+                {featuredPRs.length > 0 && (
+                    <>
+                        <h3 className="text-white text-lg font-bold px-4 pb-2 pt-4">Featured PRs</h3>
+                        <div className="flex overflow-x-auto scrollbar-hide">
+                            <div className="flex items-stretch p-4 gap-4">
+                                {featuredPRs.map((pr) => (
+                                    <div
+                                        key={pr.id}
+                                        className="flex h-full flex-1 flex-col gap-3 rounded-xl min-w-[280px] bg-[#1c2638] p-4 border border-slate-700/50 shadow-sm"
                                     >
-                                        {pr.status}
-                                    </span>
-                                </div>
-                                <div>
-                                    <p className="text-slate-400 text-sm font-medium">{pr.name}</p>
-                                    <h4 className="text-primary text-4xl font-bold mt-1">
-                                        {pr.value}
-                                        <span className="text-lg">{pr.unit}</span>
-                                    </h4>
-                                </div>
-                                <div className="flex items-center gap-2 mt-2 pt-3 border-t border-slate-700/30">
-                                    <span className="material-symbols-outlined text-green-500 text-sm">
-                                        {pr.trending}
-                                    </span>
-                                    <p className="text-green-500 text-sm font-bold">
-                                        {pr.improvement}{" "}
-                                        <span className="text-slate-500 font-normal">vs prev</span>
-                                    </p>
-                                </div>
+                                        <div className="flex justify-between items-start">
+                                            <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
+                                                <span className="material-symbols-outlined text-primary">
+                                                    {pr.icon}
+                                                </span>
+                                            </div>
+                                            <span
+                                                className={`${
+                                                    pr.statusColor === "green"
+                                                        ? "bg-green-500/10 text-green-500 border-green-500/20"
+                                                        : "bg-primary/10 text-primary border-primary/20"
+                                                } text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-widest border`}
+                                            >
+                                                {pr.status}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <p className="text-slate-400 text-sm font-medium">{pr.name}</p>
+                                            <h4 className="text-primary text-4xl font-bold mt-1">
+                                                {pr.value}
+                                                <span className="text-lg">{pr.unit}</span>
+                                            </h4>
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-2 pt-3 border-t border-slate-700/30">
+                                            <span className="material-symbols-outlined text-green-500 text-sm">
+                                                {pr.trending}
+                                            </span>
+                                            <p className="text-green-500 text-sm font-bold">
+                                                {pr.improvement}{" "}
+                                                <span className="text-slate-500 font-normal">vs prev</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
-                </div>
+                        </div>
+                    </>
+                )}
 
                 {/* ALL RECORDS LIST */}
                 <div className="px-4 pb-8">
                     <h2 className="text-white text-[22px] font-bold pb-3 pt-5">All History</h2>
-                    <div className="space-y-3">
-                        {allRecords.map((record) => (
-                            <div
-                                key={record.id}
-                                className="flex items-center justify-between p-4 bg-[#1c2638] rounded-xl border border-slate-700/50"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-full bg-background-dark flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-slate-400">
-                                            {record.icon}
-                                        </span>
+                    {allRecords.length > 0 ? (
+                        <div className="space-y-3">
+                            {allRecords.map((record) => (
+                                <div
+                                    key={record.id}
+                                    className="flex items-center justify-between p-4 bg-[#1c2638] rounded-xl border border-slate-700/50"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-background-dark flex items-center justify-center">
+                                            <span className="material-symbols-outlined text-slate-400">
+                                                {record.icon}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <p className="text-white font-bold text-base">
+                                                {record.name}
+                                            </p>
+                                            <p className="text-slate-400 text-xs">{record.date}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-white font-bold text-base">
-                                            {record.name}
+                                    <div className="text-right">
+                                        <p className="text-white font-bold text-lg">{record.value}</p>
+                                        <p
+                                            className={`text-xs font-bold ${
+                                                record.changeType === "positive"
+                                                    ? "text-green-500"
+                                                    : "text-slate-400"
+                                            }`}
+                                        >
+                                            {record.change}
                                         </p>
-                                        <p className="text-slate-400 text-xs">{record.date}</p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-white font-bold text-lg">{record.value}</p>
-                                    <p
-                                        className={`text-xs font-bold ${
-                                            record.changeType === "positive"
-                                                ? "text-green-500"
-                                                : "text-slate-400"
-                                        }`}
-                                    >
-                                        {record.change}
-                                    </p>
-                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12">
+                            <div className="w-16 h-16 rounded-full bg-slate-800/50 flex items-center justify-center mx-auto mb-4">
+                                <span className="material-symbols-outlined text-slate-500 text-3xl">
+                                    sports_score
+                                </span>
                             </div>
-                        ))}
-                    </div>
+                            <p className="text-slate-400 text-sm">No records found for {activeTab}</p>
+                            <p className="text-slate-500 text-xs mt-1">Start logging workouts to track your progress!</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

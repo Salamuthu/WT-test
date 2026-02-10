@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import LogWorkoutSheet from "./LogWorkoutSheet";
+import LogCompetitionSheet from "./LogCompetitionSheet";
+import FloatingActionButton from "./FloatingActionButton";
 
 const MainLayout = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // LogWorkout sheet state
+    // Sheet states
     const [showLogWorkout, setShowLogWorkout] = useState(false);
+    const [showLogCompetition, setShowLogCompetition] = useState(false);
 
     // Toast notification state
     const [toast, setToast] = useState(null);
@@ -23,6 +26,10 @@ const MainLayout = () => {
     }, [toast]);
 
     const handleWorkoutSave = (result) => {
+        setToast(result);
+    };
+
+    const handleCompetitionSave = (result) => {
         setToast(result);
     };
 
@@ -72,12 +79,11 @@ const MainLayout = () => {
                             <span className="text-[10px] font-bold uppercase">Plan</span>
                         </button>
 
-                        <button
-                            onClick={() => setShowLogWorkout(true)}
-                            className="size-14 rounded-full bg-primary text-white -mt-10 flex items-center justify-center border-4 border-background-dark shadow-lg shadow-primary/40"
-                        >
-                            <span className="material-symbols-outlined scale-125">add</span>
-                        </button>
+                        {/* FAB with popup buttons */}
+                        <FloatingActionButton
+                            onLogWorkout={() => setShowLogWorkout(true)}
+                            onLogCompetition={() => setShowLogCompetition(true)}
+                        />
 
                         <button
                             onClick={() => navigate("/records")}
@@ -111,6 +117,13 @@ const MainLayout = () => {
                 open={showLogWorkout}
                 onClose={() => setShowLogWorkout(false)}
                 onSave={handleWorkoutSave}
+            />
+
+            {/* LogCompetition Bottom Sheet */}
+            <LogCompetitionSheet
+                isOpen={showLogCompetition}
+                onClose={() => setShowLogCompetition(false)}
+                onSave={handleCompetitionSave}
             />
         </>
     );

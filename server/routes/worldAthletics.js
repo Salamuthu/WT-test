@@ -73,7 +73,7 @@ function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// Scraper - ONLY Seasonal Bests
+// Scraper - ALL race results from Season's Bests
 router.post('/world-athletics', authMiddleware, async (req, res) => {
     let browser;
 
@@ -93,7 +93,7 @@ router.post('/world-athletics', authMiddleware, async (req, res) => {
             return res.status(500).json({ error: 'Chrome not found' });
         }
 
-        console.log(`🔍 Fetching Seasonal Bests for: ${athleteCode}`);
+        console.log(`🔍 Fetching ALL race results for: ${athleteCode}`);
 
         browser = await puppeteer.launch({
             executablePath: chromePath,
@@ -113,7 +113,7 @@ router.post('/world-athletics', authMiddleware, async (req, res) => {
         });
 
         console.log('✅ Page loaded');
-        await delay(2000);
+        await delay(3000);
 
         // Get athlete name
         const athleteName = await page.evaluate(() => {
@@ -131,7 +131,7 @@ router.post('/world-athletics', authMiddleware, async (req, res) => {
             );
             if (statsButton) statsButton.click();
         });
-        await delay(3000);
+        await delay(4000); // Wait longer
 
         // Click "Season's bests" sub-tab
         console.log('📋 Clicking "Season\'s bests" sub-tab...');
@@ -142,27 +142,64 @@ router.post('/world-athletics', authMiddleware, async (req, res) => {
             );
             if (sbButton) sbButton.click();
         });
+        await delay(3000);
+
+        // Scroll to load ALL data
+        console.log('📜 Scrolling to load all race results...');
+        await page.evaluate(async () => {
+            await new Promise((resolve) => {
+                let totalHeight = 0;
+                const distance = 100;
+                const timer = setInterval(() => {
+                    const scrollHeight = document.body.scrollHeight;
+                    window.scrollBy(0, distance);
+                    totalHeight += distance;
+
+                    if(totalHeight >= scrollHeight){
+                        clearInterval(timer);
+                        resolve();
+                    }
+                }, 100);
+            });
+        });
         await delay(2000);
 
-        // Extract Seasonal Bests data
+        // Extract ALL race results (no deduplication)
         const seasonalBests = await page.evaluate(() => {
             const data = [];
             const tables = document.querySelectorAll('table');
 
-            tables.forEach(table => {
+            console.log(`Found ${tables.length} tables`);
+
+            tables.forEach((table, tableIndex) => {
                 const rows = table.querySelectorAll('tbody tr');
-                rows.forEach(row => {
+                console.log(`Table ${tableIndex}: ${rows.length} rows`);
+
+                rows.forEach((row, rowIndex) => {
                     const cells = Array.from(row.querySelectorAll('td')).map(td =>
                         td.textContent.trim().replace(/\s+/g, ' ')
                     );
 
-                    if (cells.length >= 2 && cells[1]) {
-                        // Skip header rows
-                        if (cells[0].toLowerCase().includes('discipline') ||
-                            cells[1].toLowerCase().includes('performance')) {
+                    // Must have at least discipline and performance
+                    if (cells.length >= 2 && cells[0] && cells[1]) {
+                        const discipline = cells[0];
+                        const performance = cells[1];
+
+                        // Skip obvious header rows
+                        if (discipline.toLowerCase().includes('discipline') ||
+                            performance.toLowerCase().includes('performance') ||
+                            discipline.toLowerCase() === 'year') {
                             return;
                         }
 
+                        // Skip empty rows
+                        if (!discipline || !performance) {
+                            return;
+                        }
+
+                        console.log(`Row ${rowIndex}: ${discipline} - ${performance}`);
+
+                        // Get all available data from cells
                         data.push({
                             discipline: cells[0] || '',
                             performance: cells[1] || '',
@@ -182,15 +219,15 @@ router.post('/world-athletics', authMiddleware, async (req, res) => {
 
         console.log(`\n✅ Extraction complete!`);
         console.log(`   Name: ${athleteName}`);
-        console.log(`   Seasonal Bests: ${seasonalBests.length}`);
+        console.log(`   Total race results: ${seasonalBests.length}`);
 
         seasonalBests.forEach((sb, i) => {
-            console.log(`   ${i + 1}. ${sb.discipline}: ${sb.performance} (${sb.venue}, ${sb.date})`);
+            console.log(`   ${i + 1}. ${sb.discipline}: ${sb.performance} (${sb.venue || 'N/A'}, ${sb.date || 'N/A'})`);
         });
 
         if (seasonalBests.length === 0) {
             return res.status(404).json({
-                error: 'No seasonal bests found for this athlete.',
+                error: 'No race results found for this athlete.',
                 hint: 'The athlete might not have competed this season yet.'
             });
         }
@@ -220,7 +257,7 @@ router.post('/world-athletics', authMiddleware, async (req, res) => {
             success: true,
             profile,
             athleteData,
-            message: `Successfully loaded ${seasonalBests.length} seasonal bests for ${athleteName}`
+            message: `Successfully loaded ${seasonalBests.length} race results for ${athleteName}`
         });
 
     } catch (error) {
