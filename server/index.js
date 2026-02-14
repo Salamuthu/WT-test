@@ -18,6 +18,7 @@ app.use(cors({
         "http://localhost:5174",
         "http://localhost:5173",
         "http://localhost:3000",
+        "https://wt-test-6xxehn6p8-praveens-projects-57ab663b.vercel.app",
         FRONTEND_URL
     ].filter(Boolean),
     credentials: true,
