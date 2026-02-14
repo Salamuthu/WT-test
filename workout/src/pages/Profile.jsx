@@ -25,7 +25,7 @@ const Profile = () => {
             try {
                 // Fetch profile
                 const profileRes = await axios.get(
-                    "https://workout-tracker-90ox.onrender.com/api/profile/me",
+                    "https://wt-test-fzak.onrender.com/api/profile/me",
                     {
                         headers: {
                             Authorization: `Bearer ${token}`,
@@ -38,7 +38,7 @@ const Profile = () => {
 
                 // Fetch competitions
                 const compRes = await axios.get(
-                    "https://workout-tracker-90ox.onrender.com/api/competitions",
+                    "https://wt-test-fzak.onrender.com/api/competitions",
                     {
                         headers: {
                             Authorization: `Bearer ${token}`,
@@ -72,7 +72,7 @@ const Profile = () => {
 
                 // Fetch workouts for strength PRs
                 const workoutRes = await axios.get(
-                    "https://workout-tracker-90ox.onrender.com/api/workouts",
+                    "https://wt-test-fzak.onrender.com/api/workouts",
                     {
                         headers: {
                             Authorization: `Bearer ${token}`,

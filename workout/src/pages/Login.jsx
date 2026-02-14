@@ -33,7 +33,7 @@ const Login = () => {
         try {
             setLoading(true);
 
-            const res = await axios.post("https://workout-tracker-90ox.onrender.com/api/login", {
+            const res = await axios.post("https://wt-test-fzak.onrender.comm/api/login", {
                 email: form.email,
                 password: form.password,
             });

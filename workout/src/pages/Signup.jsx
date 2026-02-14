@@ -33,7 +33,7 @@ const Signup = () => {
             setLoading(true);
 
             // ✅ Signup request
-            const res = await axios.post("https://workout-tracker-90ox.onrender.com/api/signup", {
+            const res = await axios.post("https://wt-test-fzak.onrender.com/api/signup", {
                 username: form.username,
                 email: form.email,
                 password: form.password,

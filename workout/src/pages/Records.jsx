@@ -35,19 +35,19 @@ const Records = () => {
 
         try {
             // Fetch profile
-            const profileRes = await axios.get("https://workout-tracker-90ox.onrender.com/api/profile/me", {
+            const profileRes = await axios.get("https://wt-test-fzak.onrender.com/api/profile/me", {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setProfile(profileRes.data);
 
             // Fetch competitions
-            const compRes = await axios.get("https://workout-tracker-90ox.onrender.com/api/competitions", {
+            const compRes = await axios.get("https://wt-test-fzak.onrender.com/api/competitions", {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setCompetitions(compRes.data.competitions || []);
 
             // Fetch workouts
-            const workoutRes = await axios.get("https://workout-tracker-90ox.onrender.com/api/workouts", {
+            const workoutRes = await axios.get("https://wt-test-fzak.onrender.com/api/workouts", {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setWorkouts(workoutRes.data.workouts || []);
