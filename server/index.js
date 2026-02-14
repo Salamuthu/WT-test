@@ -4,22 +4,34 @@ const cors = require("cors");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const Workout = require("./models/Workout");
-const auth = require("./middleware/auth");
 
-const PORT = 3000;
-const SECRET_KEY = "your_secret_key";
+const PORT = process.env.PORT || 3000;
+const SECRET_KEY = process.env.SECRET_KEY || "your_secret_key";
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://praveenjayathilake22_db_user:IMBuuF6dy6cI7aIS@cluster0.gmgl2nc.mongodb.net/?appName=Cluster0";
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5174";
 
 const app = express();
-app.use(cors());
+
+// CORS Configuration
+app.use(cors({
+    origin: [
+        "http://localhost:5174",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        FRONTEND_URL
+    ].filter(Boolean),
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 
-const uri =
-    "mongodb+srv://praveenjayathilake22_db_user:IMBuuF6dy6cI7aIS@cluster0.gmgl2nc.mongodb.net/?appName=Cluster0";
-
+// MongoDB Connection
 mongoose
-    .connect(uri)
-    .then(() => console.log("Connected to MongoDB"))
-    .catch(console.error);
+    .connect(MONGODB_URI)
+    .then(() => console.log("✅ Connected to MongoDB"))
+    .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 /* MODELS */
 const User = mongoose.model("User", {
@@ -61,6 +73,16 @@ const authMiddleware = (req, res, next) => {
 };
 
 /* ROUTES */
+
+// Health check
+app.get("/", (req, res) => {
+    res.json({
+        status: "OK",
+        message: "Athlete Tracker API is running",
+        timestamp: new Date().toISOString()
+    });
+});
+
 app.post("/api/signup", async (req, res) => {
     const { username, email, password } = req.body;
 
@@ -72,7 +94,7 @@ app.post("/api/signup", async (req, res) => {
     await user.save();
 
     const token = jwt.sign({ userId: user._id }, SECRET_KEY, {
-        expiresIn: "1h",
+        expiresIn: "24h",
     });
 
     res.status(201).json({ message: "Signup successful", token });
@@ -89,7 +111,7 @@ app.post("/api/login", async (req, res) => {
         return res.status(401).json({ message: "Invalid credentials" });
 
     const token = jwt.sign({ userId: user._id }, SECRET_KEY, {
-        expiresIn: "1h",
+        expiresIn: "24h",
     });
 
     res.json({ message: "Login successful", token });
@@ -142,7 +164,7 @@ app.get("/api/profile/me", authMiddleware, async (req, res) => {
     }
 });
 
-app.post("/api/workouts", auth, async (req, res) => {
+app.post("/api/workouts", authMiddleware, async (req, res) => {
     try {
         const workout = new Workout({
             userId: req.userId,
@@ -157,11 +179,10 @@ app.post("/api/workouts", auth, async (req, res) => {
     }
 });
 
-// 🆕 NEW: GET workouts route (sorted by creation time, newest first)
-app.get("/api/workouts", auth, async (req, res) => {
+app.get("/api/workouts", authMiddleware, async (req, res) => {
     try {
         const workouts = await Workout.find({ userId: req.userId })
-            .sort({ createdAt: -1 }) // Sort by creation time, newest first
+            .sort({ createdAt: -1 })
             .limit(100);
 
         res.json({
@@ -177,10 +198,13 @@ app.get("/api/workouts", auth, async (req, res) => {
     }
 });
 
-// 🆕 NEW: Competitions route
+// Competitions route
 const competitionRoutes = require('./routes/competitions');
 app.use('/api/competitions', competitionRoutes);
 
-app.listen(PORT, () =>
-    console.log(`Server running on http://localhost:${PORT}`)
-);
+app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+module.exports = app;
