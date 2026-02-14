@@ -101,7 +101,7 @@ const LogCompetitionSheet = ({ isOpen, onClose, onSave }) => {
             };
 
             const response = await axios.post(
-                "http://localhost:3000/api/competitions",
+                "https://workout-tracker-90ox.onrender.com/api/competitions",
                 competitionData,
                 {
                     headers: {

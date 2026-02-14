@@ -30,13 +30,13 @@ const Dashboard = () => {
 
         try {
             // Fetch profile
-            const profileRes = await axios.get("http://localhost:3000/api/profile/me", {
+            const profileRes = await axios.get("https://workout-tracker-90ox.onrender.com/api/profile/me", {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setProfile(profileRes.data);
 
             // Fetch competitions
-            const compRes = await axios.get("http://localhost:3000/api/competitions", {
+            const compRes = await axios.get("https://workout-tracker-90ox.onrender.com0/api/competitions", {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setCompetitions(compRes.data.competitions || []);
@@ -52,7 +52,7 @@ const Dashboard = () => {
             }
 
             // Fetch workouts
-            const workoutRes = await axios.get("http://localhost:3000/api/workouts", {
+            const workoutRes = await axios.get("https://workout-tracker-90ox.onrender.com/api/workouts", {
                 headers: { Authorization: `Bearer ${token}` }
             });
             const fetchedWorkouts = workoutRes.data.workouts || [];

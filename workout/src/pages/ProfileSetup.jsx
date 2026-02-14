@@ -31,7 +31,7 @@ const ProfileSetup = () => {
 
             try {
                 const res = await axios.get(
-                    "http://localhost:3000/api/profile/me",
+                    "https://workout-tracker-90ox.onrender.com/api/profile/me",
                     {
                         headers: {
                             Authorization: `Bearer ${token}`,
@@ -123,7 +123,7 @@ const ProfileSetup = () => {
             const personalBestValue = normalizePB(form.personalBestValue);
 
             await axios.post(
-                "http://localhost:3000/api/profile",
+                "https://workout-tracker-90ox.onrender.com/api/profile",
                 {
                     fullName: form.fullName,
                     mainEvent,
